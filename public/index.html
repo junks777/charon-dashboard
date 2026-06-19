@@ -1,84 +1,778 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en" class="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Charon Dashboard</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}body{background:#0f172a;color:#e2e8f0;font-family:'Segoe UI',sans-serif}.header{background:linear-gradient(135deg,#1e293e,#2a3365);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #253b5e}.header h1{font-size:20px;font-weight:700;color:#fff}.header .stats{display:flex;gap:16px;font-size:12px}.stat-item{text-align:center}.stat-item .val{color:#4ac9bf;font-size:14px;font-weight:600}.stat-item .label{color:#7b8cb8}.tabs{display:flex;gap:2px;padding:0 24px;background:#151c2d;border-bottom:1px solid #253b5e;overflow-x:auto}.tab{padding:10px 16px;color:#7b8cb8;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-size:13px;transition:all .2s}.tab.active{color:#fff;border-bottom:2px solid #4ac9bf}.tab:hover{color:#ddd}.content{padding:24px}.card{background:#1e293e;border-radius:8px;padding:16px;margin-bottom:16px;border:1px solid #253b5e}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}.section-title{font-size:18px;font-weight:600;margin:0 0 16px 0;color:#fff}.table-container{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12px}th{text-align:left;padding:8px 12px;color:#7b8cb8;border-bottom:1px solid #253b5e;white-space:nowrap}td{padding:8px 12px;border-bottom:1px solid #1e293e;white-space:nowrap}tr:hover{background:#253b5e}.badge{padding:2px 8px;border-radius:4px;font-size:11px}.bg-green{background:#0f421c;color:#4cc36e}.bg-red{background:#421c0f;color:#ff4444}.bg-yellow{background:#42370f;color:#ffd700}.bg-blue{background:#0f2842;color:#4ac9bf}.bg-purple{background:#280f42;color:#b854ff}.loading{text-align:center;padding:40px;color:#7b8cb8}.error{color:#ff4444;padding:16px}.highlight{color:#ffd700}.highlight-green{color:#4cc36e}.highlight-red{color:#ff4444}.highlight-blue{color:#4ac9bf}.highlight-purple{color:#b854ff}.small{font-size:10px;color:#7b8cb8}.mono{font-family:'Courier New',monospace}.no-data{text-align:center;padding:20px;color:#7b8cb8}.nav-info{display:flex;align-items:center;gap:8px}.nav-info .dot{width:8px;height:8px;border-radius:50%}.dot-live{background:#4cc36e}.dot-dry{background:#ffd700}.stat-card{text-align:center;padding:20px}.stat-card .val{font-size:28px;font-weight:700;color:#fff}.stat-card .label{font-size:12px;color:#7b8cb8;margin-top:4px}@media (max-width:768px){.grid{grid-template-columns:1fr}.tabs{padding:0 8px}.tab{padding:8px 12px;font-size:12px}.content{padding:12px}table{font-size:11px}th,td{padding:6px 8px}}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Charon Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            dark: { 800: '#1a1a2e', 900: '#0f0f1a', 700: '#16213e', 600: '#1a1a3e' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    * { font-family: 'Inter', sans-serif; }
+    body { background: #0f0f1a; }
+    .sidebar-item { @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors; }
+    .sidebar-item:hover { @apply bg-indigo-500/10 text-indigo-300; }
+    .sidebar-item.active { @apply bg-indigo-500/20 text-indigo-400; }
+    .card { @apply bg-dark-800/80 border border-white/5 rounded-xl p-5 backdrop-blur-sm; }
+    .stat-value { @apply text-2xl font-bold text-white; }
+    .stat-label { @apply text-xs text-gray-400 uppercase tracking-wider; }
+    .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
+    .badge-green { @apply bg-emerald-500/20 text-emerald-400; }
+    .badge-red { @apply bg-red-500/20 text-red-400; }
+    .badge-yellow { @apply bg-yellow-500/20 text-yellow-400; }
+    .badge-blue { @apply bg-blue-500/20 text-blue-400; }
+    .badge-gray { @apply bg-gray-500/20 text-gray-400; }
+    .badge-purple { @apply bg-purple-500/20 text-purple-400; }
+    .table-header { @apply px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider; }
+    .table-cell { @apply px-4 py-3 text-sm whitespace-nowrap; }
+    .refresh-btn { @apply px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 transition-colors; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    .tab-btn { @apply px-4 py-2 text-sm font-medium rounded-lg transition-colors; }
+    .tab-btn.active { @apply bg-indigo-500/20 text-indigo-400; }
+    .tab-btn:not(.active) { @apply text-gray-400 hover:text-gray-300; }
+    .skeleton { @apply animate-pulse bg-white/5 rounded; }
+  </style>
 </head>
-<body>
-<div class="header">
-<div>
-<h1>Charon Dashboard</h1>
-<div class="nav-info"><span class="dot" id="modeDot"></span><span id="tradingMode" class="small">loading...</span></div>
-</div>
-<div class="stats">
-<div class="stat-item"><div class="val" id="stat-open">0</div><div class="label">Open</div></div>
-<div class="stat-item"><div class="val" id="stat-pnl">0</div><div class="label">Portfolio Logs</div></div>
-<div class="stat-item"><div class="val" id="stat-signals">0</div><div class="label">Signals</div></div>
-<div class="stat-item"><div class="val" id="stat-candidates">0</div><div class="label">Candidates</div></div>
-</div>
-</div>
-<div class="tabs">
-<div class="tab active" data-tab="overview">Overview</div>
-<div class="tab" data-tab="positions">Positions</div>
-<div class="tab" data-tab="trades">Trades</div>
-<div class="tab" data-tab="candidates">Candidates</div>
-<div class="tab" data-tab="activity">Activity</div>
-<div class="tab" data-tab="strategies">Strategies</div>
-<div class="tab" data-tab="settings">Settings</div>
-</div>
-<div class="content" id="main-content">
-<div id="view-overview" class="view"></div>
-<div id="view-positions" class="view" style="display:none"></div>
-<div id="view-trades" class="view" style="display:none"></div>
-<div id="view-candidates" class="view" style="display:none"></div>
-<div id="view-activity" class="view" style="display:none"></div>
-<div id="view-strategies" class="view" style="display:none"></div>
-<div id="view-settings" class="view" style="display:none"></div>
-</div>
+<body class="dark text-gray-100">
+  <div class="flex h-screen">
+    <!-- Sidebar -->
+    <nav class="w-56 bg-dark-900 border-r border-white/5 flex flex-col p-3 shrink-0">
+      <div class="px-4 py-5">
+        <div class="text-xl font-bold text-white">🛶 <span class="text-indigo-400">Charon</span></div>
+        <div class="text-xs text-gray-500 mt-0.5">Dashboard</div>
+      </div>
+      <div class="flex-1 space-y-1 overflow-y-auto">
+        <a href="#" class="sidebar-item active" data-page="overview">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          Overview
+        </a>
+        <a href="#" class="sidebar-item" data-page="positions">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          Positions
+        </a>
+        <a href="#" class="sidebar-item" data-page="trades">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+          Trades
+        </a>
+        <a href="#" class="sidebar-item" data-page="candidates">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+          Candidates
+        </a>
+        <a href="#" class="sidebar-item" data-page="activity">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Activity
+        </a>
+        <a href="#" class="sidebar-item" data-page="strategies">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Strategies
+        </a>
+        <a href="#" class="sidebar-item" data-page="settings-page">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Settings
+        </a>
+      </div>
+      <div class="px-4 py-3 border-t border-white/5 mt-auto">
+        <div class="flex items-center gap-2 text-xs text-gray-500">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-400" id="status-dot"></span>
+          <span id="last-update">Connecting...</span>
+        </div>
+        <button onclick="refreshAll()" class="refresh-btn w-full mt-2">Refresh</button>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto p-6">
+      <!-- Pages -->
+      <div id="page-overview" class="page"></div>
+      <div id="page-positions" class="page hidden"></div>
+      <div id="page-trades" class="page hidden"></div>
+      <div id="page-candidates" class="page hidden"></div>
+      <div id="page-activity" class="page hidden"></div>
+      <div id="page-strategies" class="page hidden"></div>
+      <div id="page-settings-page" class="page hidden"></div>
+    </main>
+  </div>
+
 <script>
-const REFRESH_INTERVAL = 5000;
-const loaded = {}; const state = { activeTab:'overview', positions:null, allPositions:null, candidates:null, decisions:null, batches:null, decisionLogs:null, strategies:null, settings:null, wallets:null, signals:null, trades:null, stats:null, learning:null };
-const $ = id => document.getElementById(id);
-const e = tag => document.createElement(tag);
-const append = (p,c) => { p.appendChild(c); return p; };
-const empty = el => { while(el.firstChild) el.removeChild(el.firstChild); return el; };
-const fetchApi = ep => fetch(ep).then(r=>r.json());
-const fatDecimal = (v,d) => Number(v||0).toFixed(d);
-const shortDate = ms => ms ? new Date(ms).toLocaleString() : '-';
-const timeAgo = ms => { const s=(Date.now()-ms)/1000; if(s<60)return Math.floor(s)+'s';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h';return Math.floor(s/86400)+'d'; };
-const drawTable = (cols, rows, renderRow) => { const div=e('div'); div.className='table-container'; const table=e('table'); const thead=e('thead'); const tr=e('tr'); cols.forEach(c=>{const th=e('th');th.textContent=c;append(tr,th)}); append(thead,tr); append(table,thead); const tbody=e('tbody'); rows.forEach((r,i)=>{const tr=e('tr');renderRow(tr,r,i);append(tbody,tr)}); append(table,tbody); append(div,table); return div; };
-const statCard = (label, val, color) => { const card=e('div'); card.className='card stat-card'; const v=e('div'); v.className='val'+(color?' '+color:''); v.textContent=val; const l=e('div'); l.className='label'; l.textContent=label; append(card,v); append(card,l); return card; };
+// ── Utility Functions ─────────────────────────────────────────────────────────
+function fmtSol(v) { const n = Number(v); return Number.isFinite(n) ? n.toFixed(4) + ' SOL' : '?'; }
+function fmtUsd(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '?';
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K';
+  return '$' + n.toFixed(2);
+}
+function fmtPct(v) { const n = Number(v); return Number.isFinite(n) ? n.toFixed(1) + '%' : '?'; }
+function shortAddr(a) { return a ? a.slice(0, 6) + '...' + a.slice(-4) : '?'; }
+function timeAgo(ms) {
+  if (!ms) return '';
+  const sec = Math.floor((Date.now() - ms) / 1000);
+  if (sec < 60) return sec + 's ago';
+  if (sec < 3600) return Math.floor(sec / 60) + 'm ago';
+  if (sec < 86400) return Math.floor(sec / 3600) + 'h ago';
+  return Math.floor(sec / 86400) + 'd ago';
+}
+function fmtDate(ms) { return ms ? new Date(ms).toLocaleString() : ''; }
 
-async function loadStats(){try{const d=await fetchApi('/api/stats');state.stats=d;$('stat-open').textContent=d.openPositions;$('stat-pnl').textContent=d.pnl.totalSol+' S';$('stat-signals').textContent=d.signalEvents;$('stat-candidates').textContent=d.totalCandidates;$('tradingMode').textContent=d.settings.tradingMode||'dry';$('modeDot').className='dot '+(d.settings.tradingMode==='live'?'dot-live':'dot-dry')}catch(e){console.error('stats:',e)}}
-async function loadPositions(){try{state.positions=await fetchApi('/api/positions');state.allPositions=await fetchApi('/api/positions/all')}catch(e){state.positions=[];state.allPositions=[];console.error('pos:',e)}}
-async function loadCandidates(){try{state.candidates=await fetchApi('/api/candidates?limit=500')}catch(e){state.candidates=[];console.error('candidates:',e)}}
-async function loadDecisions(){try{state.decisions=await fetchApi('/api/decisions?limit=500');state.batches=await fetchApi('/api/batches?limit=50');state.decisionLogs=await fetchApi('/api/decision-logs?limit=100')}catch(e){state.decisions=[];console.error('decis:',e)}}
-async function loadStrategies(){try{state.strategies=await fetchApi('/api/strategies')}catch(e){state.strategies=[];console.error('strat:',e)}}
-async function loadSettings(){try{state.settings=await fetchApi('/api/settings')}catch(e){state.settings=[];console.error('sett:',e)}}
-async function loadSignals(){try{state.signals=await fetchApi('/api/signals?limit=100')}catch(e){state.signals=[];console.error('sig:',e)}}
-async function loadTrades(){try{state.trades=await fetchApi('/api/position-trades?limit=200')}catch(e){state.trades=[];console.error('tr:',e)}}
+function pnlClass(pct) {
+  const n = Number(pct);
+  if (n > 0) return 'text-emerald-400';
+  if (n < 0) return 'text-red-400';
+  return 'text-gray-400';
+}
 
-async function renderOverview(){const v=empty($('view-overview'));if(!state.stats)return append(v,e('div')).appendChild(document.createTextNode('Loading...'));const d=state.stats;const g=e('div');g.className='grid';g.appendChild(statCard('Open Positions',d.openPositions,'highlight-blue'));g.appendChild(statCard('Total PnL',d.pnl.totalSol+' S '+d.pnl.wins+'W | '+d.pnl.losses+'L',d.pnl.totalSol>0?'highlight-green':'highlight-red'));g.appendChild(statCard('Win Rate',(d.pnl.wins/d.pnl.totalTrades*100||0).toFixed(1)+'%',d.pnl.avgPct>0?'highlight-green':'highlight-red'));g.appendChild(statCard('Signals',d.signalEvents,'highlight-yellow'));g.appendChild(statCard('Candidates',d.totalCandidates,'highlight-blue'));g.appendChild(statCard('Decisions',d.totalDecisions,'highlight-purple'));v.appendChild(g);if(d.activeStrategy){const sc=e('div');sc.className='card';sc.innerHTML='<h3>Active Strategy</h3><pre class="mono small">'+JSON.stringify(d.activeStrategy,null,2)+'</pre>';v.appendChild(sc)}}
+function statusBadge(status) {
+  const map = {
+    open: 'badge-green', closed: 'badge-gray', candidate: 'badge-blue', filtered: 'badge-yellow',
+    buy: 'badge-green', watch: 'badge-yellow', pass: 'badge-gray', ignored: 'badge-gray',
+    pending_confirmation: 'badge-yellow', executed_live: 'badge-green', execution_failed: 'badge-red',
+    rejected: 'badge-red', new: 'badge-blue',
+  };
+  const cls = map[status] || 'badge-gray';
+  return `<span class="badge ${cls}">${status}</span>`;
+}
 
-async function renderPositions(){const v=empty($('view-positions'));if(state.positions===null)return append(v,e('div')).appendChild(document.createTextNode('Loading...'));if(!state.positions.length)return append(v,e('div')).appendChild(document.createTextNode('No open positions'));v.appendChild(drawTable(['Symbol','Mint','Status','Side','Entry','Exit','PnL Sol','PnL %','Mode'],state.positions.slice(0,50),(tr,r)=>{tr.innerHTML='<td>'+(r.symbol||r.mint?.slice(0,6)||'')+'</td><td><span class="mono">'+(r.mint?.slice(0,6)||'')+'</span></td><td>'+r.status+'</td><td>'+(r.side||'')+'</td><td>'+shortDate(r.opened_at_ms)+'</td><td>'+(r.closed_at_ms?shortDate(r.closed_at_ms):'-')+'</td><td>'+(r.pnl_sol||0).toFixed(4)+'</td><td>'+(r.pnl_percent||0).toFixed(2)+'</td><td>'+(r.execution_mode||'-')+'</td>'}))}
+function verdictBadge(v) {
+  const map = { BUY: 'badge-green', WATCH: 'badge-yellow', PASS: 'badge-gray' };
+  return `<span class="badge ${map[v] || 'badge-gray'}">${v || '?'}</span>`;
+}
 
-async function renderTrades(){const v=empty($('view-trades'));if(state.trades===null)return append(v,e('div')).appendChild(document.createTextNode('Loading...'));if(!state.trades.length)return append(v,e('div')).appendChild(document.createTextNode('No trades'));v.appendChild(drawTable(['ID','Mint','Side','Price','MCap','Size Sol','Time'],state.trades,(tr,r)=>{tr.innerHTML='<td>'+r.id+'</td><td><span class="mono">'+(r.mint?.slice(0,8)||'')+'</span></td><td>'+r.side+'</td><td>'+(r.price||'-')+'</td><td>'+(r.mcap||'-')+'</td><td>'+(r.size_sol||'')+'</td><td>'+timeAgo(r.at_ms)+'</td>'}))}
+// ── Navigation ────────────────────────────────────────────────────────────────
+const pages = ['overview', 'positions', 'trades', 'candidates', 'activity', 'strategies', 'settings-page'];
+let currentPage = 'overview';
 
-async function renderCandidates(){const v=empty($('view-candidates'));if(state.candidates===null)return append(v,e('div')).appendChild(document.createTextNode('Loading...'));if(!state.candidates.length)return append(v,e('div')).appendChild(document.createTextNode('No candidates'));v.appendChild(drawTable(['ID','Mint','Status','Signal','Age'],state.candidates,(tr,r)=>{tr.innerHTML='<td>'+r.id+'</td><td><span class="mono">'+(r.mint?.slice(0,8)||'')+'</span></td><td>'+r.status+'</td><td>'+(r.signal_key||'-')+'</td><td>'+timeAgo(r.created_at_ms)+'</td>'}))}
+document.querySelectorAll('.sidebar-item').forEach(el => {
+  el.addEventListener('click', e => {
+    e.preventDefault();
+    const page = el.dataset.page;
+    if (!page) return;
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    pages.forEach(p => document.getElementById('page-' + p).classList.add('hidden'));
+    document.getElementById('page-' + page).classList.remove('hidden');
+    currentPage = page;
+    loadPage(page);
+  });
+});
 
-async function renderActivity(){const v=empty($('view-activity'));if(state.decisions===null)return append(v,e('div')).appendChild(document.createTextNode('Loading...'));if(!state.decisions.length)return append(v,e('div')).appendChild(document.createTextNode('No decisions'));v.appendChild(drawTable(['Verdict','Mint','Confidence','Reason','Time'],state.decisions.slice(0,50),(tr,r)=>{tr.innerHTML='<td>'+r.verdict+'</td><td><span class="mono">'+(r.mint?.slice(0,6)||'')+'</span></td><td>'+fatDecimal(r.confidence,2)+'</td><td class="small">'+r.reason.slice(0,80)+'</td><td>'+timeAgo(r.created_at_ms)+'</td>'}))}
+// ── API Fetch ─────────────────────────────────────────────────────────────────
+async function api(path) {
+  const res = await fetch('/api' + path);
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
 
-async function renderStrategies(){const v=empty($('view-strategies'));if(state.strategies===null)return append(v,e('div')).appendChild(document.createTextNode('Loading...'));if(!state.strategies.length)return append(v,e('div')).appendChild(document.createTextNode('No strategies'));state.strategies.forEach(s=>{const card=e('div');card.className='card';card.innerHTML='<h3>'+s.name+' <span class="badge '+(s.enabled?'bg-green':'bg-red')+'">'+(s.enabled?'enabled':'disabled')+'</span></h3><pre class="mono small">'+JSON.stringify(s,null,2)+'</pre>';v.appendChild(card)})}
+async function charonApi(method, path, body) {
+  const res = await fetch('/api' + path, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
 
-async function renderSettings(){const v=empty($('view-settings'));if(state.settings===null)return append(v,e('div')).appendChild(document.createTextNode('Loading...'));if(!state.settings.length)return append(v,e('div')).appendChild(document.createTextNode('No settings'));v.appendChild(drawTable(['Key','Value'],state.settings,(tr,r)=>{tr.innerHTML='<td>'+r.key+'</td><td><div class="mono small">'+r.value+'</div></td>'}))}
+function notify(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `fixed top-4 right-4 z-50 px-4 py-2 rounded-lg text-sm font-medium shadow-lg transition-all duration-300 ${
+    type === 'success' ? 'bg-emerald-500/90 text-white' : 'bg-red-500/90 text-white'
+  }`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
+}
 
-async function refreshAll(){await Promise.all([loadStats(),loadPositions(),loadTrades(),loadCandidates(),loadDecisions(),loadStrategies(),loadSettings(),loadSignals()]);await renderOverview();const tab=state.activeTab;if(tab==='positions')await renderPositions();else if(tab==='trades')await renderTrades();else if(tab==='candidates')await renderCandidates();else if(tab==='activity')await renderActivity();else if(tab==='strategies')await renderStrategies();else if(tab==='settings')await renderSettings()}
+let refreshInterval = null;
 
-document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{state.activeTab=tab.getAttribute('data-tab');document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');document.querySelectorAll('.view').forEach(t=>t.style.display='none');$('view-'+state.activeTab).style.display='block';if(state.activeTab==='overview')renderOverview();else if(state.activeTab==='positions')renderPositions();else if(state.activeTab==='trades')renderTrades();else if(state.activeTab==='candidates')renderCandidates();else if(state.activeTab==='activity')renderActivity();else if(state.activeTab==='strategies')renderStrategies();else if(state.activeTab==='settings')renderSettings()})});setInterval(()=>refreshAll(),REFRESH_INTERVAL);refreshAll()});
+function startAutoRefresh() {
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = setInterval(() => {
+    loadPage(currentPage);
+  }, 5000);
+}
+
+async function refreshAll() {
+  document.getElementById('last-update').textContent = 'Refreshing...';
+  await loadPage(currentPage);
+}
+
+async function loadPage(page) {
+  try {
+    document.getElementById('status-dot').className = 'inline-block w-2 h-2 rounded-full bg-yellow-400';
+    document.getElementById('last-update').textContent = 'Loading...';
+    const handlers = {
+      overview: loadOverview,
+      positions: loadPositions,
+      trades: loadTrades,
+      candidates: loadCandidates,
+      activity: loadActivity,
+      strategies: loadStrategies,
+      'settings-page': loadSettings,
+    };
+    if (handlers[page]) await handlers[page]();
+    document.getElementById('status-dot').className = 'inline-block w-2 h-2 rounded-full bg-emerald-400';
+    document.getElementById('last-update').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch (err) {
+    document.getElementById('status-dot').className = 'inline-block w-2 h-2 rounded-full bg-red-400';
+    document.getElementById('last-update').textContent = 'Error: ' + err.message;
+  }
+}
+
+// ── Overview Page ─────────────────────────────────────────────────────────────
+async function loadOverview() {
+  const [stats, positions, recentTrades] = await Promise.all([
+    api('/stats'), api('/positions'), api('/trades')
+  ]);
+
+  document.getElementById('page-overview').innerHTML = `
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-white">Overview</h1>
+      <p class="text-sm text-gray-400 mt-1">Real-time Charon bot status and performance</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div class="card">
+        <div class="stat-label">Agent Status</div>
+        <div class="stat-value flex items-center gap-2 mt-1">
+          <span class="inline-block w-3 h-3 rounded-full ${stats.settings.agentEnabled === 'true' ? 'bg-emerald-400' : 'bg-gray-500'}"></span>
+          ${stats.settings.agentEnabled === 'true' ? 'Active' : 'Disabled'}
+        </div>
+        <div class="text-sm text-gray-400 mt-1">Mode: <span class="text-indigo-400 font-medium">${stats.settings.tradingMode}</span></div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Active Strategy</div>
+        <div class="stat-value text-lg mt-1">${stats.activeStrategy ? stats.activeStrategy.name : 'None'}</div>
+        <div class="text-sm text-gray-400 mt-1">Size: ${fmtSol(stats.activeStrategy?.position_size_sol)} &middot; TP: ${fmtPct(stats.activeStrategy?.tp_percent)} &middot; SL: ${fmtPct(stats.activeStrategy?.sl_percent)}</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Open Positions</div>
+        <div class="stat-value mt-1">${stats.openPositions}</div>
+        <div class="text-sm text-gray-400 mt-1">Live: ${stats.livePositions} &middot; Closed: ${stats.closedPositions}</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">PnL (Closed)</div>
+        <div class="stat-value ${pnlClass(stats.pnl.totalSol)} mt-1">${Number(stats.pnl.totalSol).toFixed(4)} SOL</div>
+        <div class="text-sm text-gray-400 mt-1">Avg: ${fmtPct(stats.pnl.avgPct)} &middot; ${stats.pnl.wins}W / ${stats.pnl.losses}L</div>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="card">
+        <div class="stat-label">Candidates</div>
+        <div class="stat-value text-lg mt-1">${stats.totalCandidates}</div>
+        <div class="text-sm text-gray-400">LLM Decisions: ${stats.totalDecisions}</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Signal Events</div>
+        <div class="stat-value text-lg mt-1">${stats.signalEvents}</div>
+        <div class="text-sm text-gray-400">LLM Batches: ${stats.totalBatches}</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Pending Intents</div>
+        <div class="stat-value text-lg mt-1">${stats.pendingIntents}</div>
+        <div class="text-sm text-gray-400">Awaiting confirmation</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Win Rate</div>
+        <div class="stat-value text-lg mt-1">${stats.pnl.totalTrades > 0 ? ((stats.pnl.wins / stats.pnl.totalTrades) * 100).toFixed(1) + '%' : '0%'}</div>
+        <div class="text-sm text-gray-400">${stats.pnl.totalTrades} total trades</div>
+      </div>
+    </div>
+    <div class="card mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-white">Top Open Positions</h2>
+        <span class="text-xs text-gray-500">${positions.length} positions</span>
+      </div>
+      ${positions.length === 0 ? '<div class="text-gray-500 text-sm py-8 text-center">No open positions</div>' : `
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-white/5">
+              <th class="table-header">Token</th>
+              <th class="table-header">Entry Mcap</th>
+              <th class="table-header">Size</th>
+              <th class="table-header">TP / SL</th>
+              <th class="table-header">Age</th>
+              <th class="table-header">Mode</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">
+            ${positions.slice(0, 5).map(p => `
+            <tr class="hover:bg-white/[0.02]">
+              <td class="table-cell font-medium text-white">${p.symbol || shortAddr(p.mint)}</td>
+              <td class="table-cell">${fmtUsd(p.entry_mcap)}</td>
+              <td class="table-cell">${fmtSol(p.size_sol)}</td>
+              <td class="table-cell">${fmtPct(p.tp_percent)} / ${fmtPct(p.sl_percent)}</td>
+              <td class="table-cell text-gray-400">${timeAgo(p.opened_at_ms)}</td>
+              <td class="table-cell">${statusBadge(p.execution_mode || 'dry_run')}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`}
+    </div>
+  `;
+}
+
+// ── Positions Page ────────────────────────────────────────────────────────────
+async function loadPositions() {
+  const [allPositions, trades] = await Promise.all([api('/positions/all'), api('/position-trades')]);
+
+  const open = allPositions.filter(p => p.status === 'open');
+  const closed = allPositions.filter(p => p.status === 'closed');
+
+  document.getElementById('page-positions').innerHTML = `
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-white">Positions</h1>
+      <p class="text-sm text-gray-400 mt-1">${open.length} open, ${closed.length} closed</p>
+    </div>
+    <div class="flex gap-2 mb-4">
+      <button class="tab-btn active" data-tab="pos-open">Open (${open.length})</button>
+      <button class="tab-btn" data-tab="pos-closed">Closed (${closed.length})</button>
+      <button class="tab-btn" data-tab="pos-trades">Trades (${trades.length})</button>
+    </div>
+    <div id="pos-open" class="tab-content">
+      ${open.length === 0 ? '<div class="card text-gray-500 text-sm py-8 text-center">No open positions</div>' : `
+      <div class="card p-0 overflow-x-auto">
+        <table class="w-full">
+          <thead><tr class="border-b border-white/5">
+            <th class="table-header">ID</th><th class="table-header">Token</th><th class="table-header">Entry Mcap</th><th class="table-header">Size</th>
+            <th class="table-header">TP</th><th class="table-header">SL</th><th class="table-header">Trail</th><th class="table-header">Opened</th><th class="table-header">Mode</th><th class="table-header">Actions</th>
+          </tr></thead>
+          <tbody class="divide-y divide-white/5">
+            ${open.map(p => `<tr class="hover:bg-white/[0.02]">
+              <td class="table-cell text-gray-400">#${p.id}</td>
+              <td class="table-cell"><span class="font-medium text-white">${p.symbol || '?'}</span><br><span class="text-xs text-gray-500">${shortAddr(p.mint)}</span></td>
+              <td class="table-cell">${fmtUsd(p.entry_mcap)}</td>
+              <td class="table-cell">${fmtSol(p.size_sol)}</td>
+              <td class="table-cell text-emerald-400">
+                <span class="editable-tp" data-id="${p.id}" data-field="tp_percent">${fmtPct(p.tp_percent)}</span>
+              </td>
+              <td class="table-cell text-red-400">
+                <span class="editable-sl" data-id="${p.id}" data-field="sl_percent">${fmtPct(p.sl_percent)}</span>
+              </td>
+              <td class="table-cell">
+                <button class="trail-btn text-xs underline hover:text-indigo-300" data-id="${p.id}">${p.trailing_enabled ? fmtPct(p.trailing_percent) : 'off'}</button>
+              </td>
+              <td class="table-cell text-gray-400">${timeAgo(p.opened_at_ms)}</td>
+              <td class="table-cell">${statusBadge(p.execution_mode || 'dry_run')}</td>
+              <td class="table-cell">
+                <button class="close-btn text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 px-2 py-1 rounded" data-id="${p.id}">Close</button>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`}
+    </div>
+    <div id="pos-closed" class="tab-content hidden">
+      ${closed.length === 0 ? '<div class="card text-gray-500 text-sm py-8 text-center">No closed positions</div>' : `
+      <div class="card p-0 overflow-x-auto">
+        <table class="w-full">
+          <thead><tr class="border-b border-white/5">
+            <th class="table-header">ID</th><th class="table-header">Token</th><th class="table-header">Entry</th><th class="table-header">Size</th>
+            <th class="table-header">PnL %</th><th class="table-header">PnL SOL</th><th class="table-header">Reason</th><th class="table-header">Held</th><th class="table-header">Mode</th>
+          </tr></thead>
+          <tbody class="divide-y divide-white/5">
+            ${closed.map(p => `<tr class="hover:bg-white/[0.02]">
+              <td class="table-cell text-gray-400">#${p.id}</td>
+              <td class="table-cell"><span class="font-medium text-white">${p.symbol || '?'}</span><br><span class="text-xs text-gray-500">${shortAddr(p.mint)}</span></td>
+              <td class="table-cell">${fmtUsd(p.entry_mcap)}</td>
+              <td class="table-cell">${fmtSol(p.size_sol)}</td>
+              <td class="table-cell font-medium ${pnlClass(p.pnl_percent)}">${fmtPct(p.pnl_percent)}</td>
+              <td class="table-cell font-medium ${pnlClass(p.pnl_sol)}">${fmtSol(p.pnl_sol)}</td>
+              <td class="table-cell">${statusBadge(p.exit_reason || 'closed')}</td>
+              <td class="table-cell text-gray-400">${p.opened_at_ms && p.closed_at_ms ? timeAgo(p.opened_at_ms).replace(' ago','') : '?'}</td>
+              <td class="table-cell">${statusBadge(p.execution_mode || 'dry_run')}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`}
+    </div>
+    <div id="pos-trades" class="tab-content hidden">
+      <div class="card p-0 overflow-x-auto">
+        <table class="w-full">
+          <thead><tr class="border-b border-white/5">
+            <th class="table-header">ID</th><th class="table-header">Pos#</th><th class="table-header">Side</th><th class="table-header">Mint</th><th class="table-header">Price</th><th class="table-header">Mcap</th><th class="table-header">Size</th><th class="table-header">Reason</th><th class="table-header">Time</th>
+          </tr></thead>
+          <tbody class="divide-y divide-white/5">
+            ${trades.map(t => `<tr class="hover:bg-white/[0.02]">
+              <td class="table-cell text-gray-400">#${t.id}</td>
+              <td class="table-cell text-gray-400">#${t.position_id}</td>
+              <td class="table-cell"><span class="badge ${t.side === 'buy' ? 'badge-green' : 'badge-red'}">${t.side}</span></td>
+              <td class="table-cell text-xs font-mono">${shortAddr(t.mint)}</td>
+              <td class="table-cell">${fmtUsd(t.price)}</td>
+              <td class="table-cell">${fmtUsd(t.mcap)}</td>
+              <td class="table-cell">${fmtSol(t.size_sol)}</td>
+              <td class="table-cell text-xs text-gray-400">${t.reason || ''}</td>
+              <td class="table-cell text-gray-400 text-xs">${timeAgo(t.at_ms)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  // Tab switching
+  document.querySelectorAll('#page-positions .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#page-positions .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('#page-positions .tab-content').forEach(c => c.classList.add('hidden'));
+      document.getElementById(btn.dataset.tab).classList.remove('hidden');
+    });
+  });
+
+  // Close position buttons
+  document.querySelectorAll('#page-positions .close-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      if (!confirm(`Close position #${id}?`)) return;
+      try {
+        await charonApi('POST', `/close-position/${id}`, { reason: 'MANUAL' });
+        notify(`Position #${id} closed`);
+        loadPositions();
+      } catch (err) { notify(err.message, 'error'); }
+    });
+  });
+
+  // Toggle trailing buttons
+  document.querySelectorAll('#page-positions .trail-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      try {
+        await charonApi('POST', `/toggle-trailing/${id}`);
+        notify(`Trailing toggled for #${id}`);
+        loadPositions();
+      } catch (err) { notify(err.message, 'error'); }
+    });
+  });
+
+  // Editable TP/SL - click to edit inline
+  document.querySelectorAll('#page-positions .editable-tp, #page-positions .editable-sl').forEach(el => {
+    el.addEventListener('dblclick', () => {
+      const id = el.dataset.id;
+      const field = el.dataset.field;
+      const current = parseFloat(el.textContent);
+      const val = prompt(`Enter new ${field} (current: ${current}):`, current);
+      if (val === null || val === '') return;
+      const num = parseFloat(val);
+      if (isNaN(num)) return notify('Invalid number', 'error');
+      charonApi('PATCH', `/position/${id}/rule`, { field, value: num })
+        .then(() => { notify(`${field} updated to ${num}%`); loadPositions(); })
+        .catch(err => notify(err.message, 'error'));
+    });
+  });
+}
+
+// ── Trades Page ───────────────────────────────────────────────────────────────
+async function loadTrades() {
+  const [allPositions, trades] = await Promise.all([api('/positions/all'), api('/position-trades')]);
+  const closed = allPositions.filter(p => p.status === 'closed');
+
+  const totalPnlSol = closed.reduce((sum, p) => sum + Number(p.pnl_sol || 0), 0);
+  const wins = closed.filter(p => Number(p.pnl_sol) > 0).length;
+  const losses = closed.filter(p => Number(p.pnl_sol) <= 0).length;
+
+  document.getElementById('page-trades').innerHTML = `
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-white">Trades & PnL</h1>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="card"><div class="stat-label">Total PnL</div><div class="stat-value ${pnlClass(totalPnlSol)} mt-1">${fmtSol(totalPnlSol)}</div></div>
+      <div class="card"><div class="stat-label">Win Rate</div><div class="stat-value text-lg mt-1">${closed.length > 0 ? (wins / closed.length * 100).toFixed(1) + '%' : '0%'}</div></div>
+      <div class="card"><div class="stat-label">Wins / Losses</div><div class="stat-value text-lg mt-1"><span class="text-emerald-400">${wins}</span> / <span class="text-red-400">${losses}</span></div></div>
+      <div class="card"><div class="stat-label">Total Trades</div><div class="stat-value text-lg mt-1">${closed.length}</div></div>
+    </div>
+    <div class="card mb-6 p-0 overflow-x-auto">
+      <table class="w-full">
+        <thead><tr class="border-b border-white/5">
+          <th class="table-header">ID</th><th class="table-header">Token</th><th class="table-header">Entry</th><th class="table-header">Exit</th><th class="table-header">Size</th>
+          <th class="table-header">PnL %</th><th class="table-header">PnL SOL</th><th class="table-header">Exit Reason</th><th class="table-header">Mode</th><th class="table-header">Date</th>
+        </tr></thead>
+        <tbody class="divide-y divide-white/5">
+          ${closed.map(p => `<tr class="hover:bg-white/[0.02]">
+            <td class="table-cell text-gray-400">#${p.id}</td>
+            <td class="table-cell"><span class="font-medium text-white">${p.symbol || '?'}</span><br><span class="text-xs text-gray-500">${shortAddr(p.mint)}</span></td>
+            <td class="table-cell">${fmtUsd(p.entry_mcap)}</td>
+            <td class="table-cell">${fmtUsd(p.exit_mcap)}</td>
+            <td class="table-cell">${fmtSol(p.size_sol)}</td>
+            <td class="table-cell font-bold ${pnlClass(p.pnl_percent)}">${fmtPct(p.pnl_percent)}</td>
+            <td class="table-cell font-bold ${pnlClass(p.pnl_sol)}">${fmtSol(p.pnl_sol)}</td>
+            <td class="table-cell">${statusBadge(p.exit_reason || '-')}</td>
+            <td class="table-cell">${statusBadge(p.execution_mode || 'dry_run')}</td>
+            <td class="table-cell text-gray-400 text-xs">${fmtDate(p.closed_at_ms)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ── Candidates Page ───────────────────────────────────────────────────────────
+async function loadCandidates() {
+  const [candidates, decisions] = await Promise.all([api('/candidates?limit=100'), api('/decisions?limit=100')]);
+
+  const decisionMap = {};
+  decisions.forEach(d => { decisionMap[d.candidate_id] = d; });
+
+  document.getElementById('page-candidates').innerHTML = `
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-white">Candidates</h1>
+      <p class="text-sm text-gray-400 mt-1">${candidates.length} recent candidates</p>
+    </div>
+    <div class="card p-0 overflow-x-auto">
+      <table class="w-full">
+        <thead><tr class="border-b border-white/5">
+          <th class="table-header">ID</th><th class="table-header">Token</th><th class="table-header">Route</th><th class="table-header">Mcap</th>
+          <th class="table-header">Price</th><th class="table-header">Liquidity</th><th class="table-header">Holders</th><th class="table-header">Status</th>
+          <th class="table-header">Verdict</th><th class="table-header">Age</th><th class="table-header">Action</th>
+        </tr></thead>
+        <tbody class="divide-y divide-white/5">
+          ${candidates.map(c => {
+            const d = decisionMap[c.id];
+            const cand = c.candidate_json || {};
+            const token = cand.token || {};
+            const metrics = cand.metrics || {};
+            return `<tr class="hover:bg-white/[0.02]">
+              <td class="table-cell text-gray-400">#${c.id}</td>
+              <td class="table-cell"><span class="font-medium text-white">${token.symbol || '?'}</span><br><span class="text-xs text-gray-500">${shortAddr(token.mint || c.mint)}</span></td>
+              <td class="table-cell text-xs text-gray-400">${(cand.signals || {}).label || c.route || '-'}</td>
+              <td class="table-cell">${fmtUsd(metrics.marketCapUsd)}</td>
+              <td class="table-cell">${fmtUsd(metrics.priceUsd)}</td>
+              <td class="table-cell">${fmtUsd(metrics.liquidityUsd)}</td>
+              <td class="table-cell">${metrics.holderCount || '-'}</td>
+              <td class="table-cell">${statusBadge(c.status)}</td>
+              <td class="table-cell">${d ? verdictBadge(d.verdict) : '-'}</td>
+              <td class="table-cell text-gray-400 text-xs">${timeAgo(c.created_at_ms)}</td>
+              <td class="table-cell">
+                ${c.status === 'candidate' ? `<button class="buy-btn text-xs bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 px-2 py-1 rounded" data-id="${c.id}">Buy</button>` : '-'}
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  document.querySelectorAll('#page-candidates .buy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      if (!confirm(`Buy candidate #${id}?`)) return;
+      try {
+        await charonApi('POST', `/execute-buy/${id}`);
+        notify(`Buy order submitted for #${id}`);
+        loadCandidates();
+      } catch (err) { notify(err.message, 'error'); }
+    });
+  });
+}
+
+// ── Activity Page ─────────────────────────────────────────────────────────────
+async function loadActivity() {
+  const [batches, decisionLogs, signals] = await Promise.all([
+    api('/batches?limit=30'), api('/decision-logs?limit=50'), api('/signals?limit=50')
+  ]);
+
+  document.getElementById('page-activity').innerHTML = `
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-white">Activity</h1>
+      <p class="text-sm text-gray-400 mt-1">LLM batches, decision logs & signal events</p>
+    </div>
+    <div class="flex gap-2 mb-4">
+      <button class="tab-btn active" data-tab="act-batches">LLM Batches (${batches.length})</button>
+      <button class="tab-btn" data-tab="act-logs">Decision Logs (${decisionLogs.length})</button>
+      <button class="tab-btn" data-tab="act-signals">Signals (${signals.length})</button>
+    </div>
+    <div id="act-batches" class="tab-content">
+      <div class="card p-0 overflow-x-auto">
+        <table class="w-full">
+          <thead><tr class="border-b border-white/5">
+            <th class="table-header">ID</th><th class="table-header">Trigger</th><th class="table-header">Selected</th><th class="table-header">Verdict</th>
+            <th class="table-header">Confidence</th><th class="table-header">Reason</th><th class="table-header">Time</th>
+          </tr></thead>
+          <tbody class="divide-y divide-white/5">
+            ${batches.map(b => `<tr class="hover:bg-white/[0.02]">
+              <td class="table-cell text-gray-400">#${b.id}</td>
+              <td class="table-cell text-xs font-mono text-gray-400">${shortAddr(b.selected_mint || '') || '-'}</td>
+              <td class="table-cell text-xs font-mono">${shortAddr(b.selected_mint || '') || '-'}</td>
+              <td class="table-cell">${verdictBadge(b.verdict)}</td>
+              <td class="table-cell">${b.confidence != null ? b.confidence.toFixed(0) + '%' : '-'}</td>
+              <td class="table-cell text-xs text-gray-400 max-w-xs truncate">${b.reason || ''}</td>
+              <td class="table-cell text-gray-400 text-xs">${timeAgo(b.created_at_ms)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div id="act-logs" class="tab-content hidden">
+      <div class="card p-0 overflow-x-auto">
+        <table class="w-full">
+          <thead><tr class="border-b border-white/5">
+            <th class="table-header">ID</th><th class="table-header">Mint</th><th class="table-header">Action</th><th class="table-header">Mode</th>
+            <th class="table-header">Verdict</th><th class="table-header">Strategy</th><th class="table-header">Time</th>
+          </tr></thead>
+          <tbody class="divide-y divide-white/5">
+            ${decisionLogs.map(l => `<tr class="hover:bg-white/[0.02]">
+              <td class="table-cell text-gray-400">#${l.id}</td>
+              <td class="table-cell text-xs font-mono text-gray-400">${shortAddr(l.selected_mint || '') || '-'}</td>
+              <td class="table-cell text-xs"><span class="badge badge-blue">${l.action || ''}</span></td>
+              <td class="table-cell text-xs">${l.mode || ''}</td>
+              <td class="table-cell">${verdictBadge(l.verdict)}</td>
+              <td class="table-cell text-xs text-gray-400">${l.strategy_id || '-'}</td>
+              <td class="table-cell text-gray-400 text-xs">${timeAgo(l.at_ms)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div id="act-signals" class="tab-content hidden">
+      <div class="card p-0 overflow-x-auto">
+        <table class="w-full">
+          <thead><tr class="border-b border-white/5">
+            <th class="table-header">ID</th><th class="table-header">Mint</th><th class="table-header">Kind</th><th class="table-header">Source</th><th class="table-header">Time</th>
+          </tr></thead>
+          <tbody class="divide-y divide-white/5">
+            ${signals.map(s => `<tr class="hover:bg-white/[0.02]">
+              <td class="table-cell text-gray-400">#${s.id}</td>
+              <td class="table-cell text-xs font-mono text-gray-400">${shortAddr(s.mint)}</td>
+              <td class="table-cell">${statusBadge(s.kind)}</td>
+              <td class="table-cell text-xs text-gray-400">${s.source || ''}</td>
+              <td class="table-cell text-gray-400 text-xs">${timeAgo(s.at_ms)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  document.querySelectorAll('#page-activity .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#page-activity .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('#page-activity .tab-content').forEach(c => c.classList.add('hidden'));
+      document.getElementById(btn.dataset.tab).classList.remove('hidden');
+    });
+  });
+}
+
+// ── Strategies Page ───────────────────────────────────────────────────────────
+async function loadStrategies() {
+  const [strategies, stats] = await Promise.all([api('/strategies'), api('/stats')]);
+
+  document.getElementById('page-strategies').innerHTML = `
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-white">Strategies</h1>
+      <p class="text-sm text-gray-400 mt-1">Active: <span class="text-indigo-400 font-medium">${stats.activeStrategy?.name || 'None'}</span></p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      ${strategies.map(s => {
+        const active = s.enabled ? 'ring-2 ring-indigo-500/50' : '';
+        return `<div class="card ${active}">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg font-semibold text-white">${s.name}</h3>
+            <div class="flex items-center gap-2">
+              ${s.enabled ? '<span class="badge badge-green">Active</span>' : `<button class="activate-strat-btn text-xs bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 px-2 py-1 rounded" data-id="${s.id}">Activate</button>`}
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <div><span class="text-gray-400">Entry:</span> <span class="text-white">${s.entry_mode || 'immediate'}</span></div>
+            <div><span class="text-gray-400">Min Sources:</span> <span class="text-white">${s.min_source_count}</span></div>
+            <div><span class="text-gray-400">Size:</span> <span class="text-white">${fmtSol(s.position_size_sol)}</span></div>
+            <div><span class="text-gray-400">Max Pos:</span> <span class="text-white">${s.max_open_positions}</span></div>
+            <div><span class="text-gray-400">TP:</span> <span class="text-emerald-400">${fmtPct(s.tp_percent)}</span></div>
+            <div><span class="text-gray-400">SL:</span> <span class="text-red-400">${fmtPct(s.sl_percent)}</span></div>
+            <div><span class="text-gray-400">Trailing:</span> <span class="text-white">${s.trailing_enabled ? fmtPct(s.trailing_percent) : 'off'}</span></div>
+            <div><span class="text-gray-400">LLM:</span> <span class="text-white">${s.use_llm ? 'on (min ' + s.llm_min_confidence + '%)' : 'off'}</span></div>
+            <div><span class="text-gray-400">Min Mcap:</span> <span class="text-white">${fmtUsd(s.min_mcap_usd)}</span></div>
+            <div><span class="text-gray-400">Max Mcap:</span> <span class="text-white">${s.max_mcap_usd > 0 ? fmtUsd(s.max_mcap_usd) : 'off'}</span></div>
+            <div><span class="text-gray-400">Fee Req:</span> <span class="text-white">${s.require_fee_claim ? 'yes' : 'no'}</span></div>
+            <div><span class="text-gray-400">Partial TP:</span> <span class="text-white">${s.partial_tp ? s.partial_tp_sell_percent + '% at ' + fmtPct(s.partial_tp_at_percent) : 'off'}</span></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+
+  document.querySelectorAll('#page-strategies .activate-strat-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      try {
+        await charonApi('POST', `/strategy/${id}/activate`);
+        notify(`Strategy "${id}" activated`);
+        loadStrategies();
+      } catch (err) { notify(err.message, 'error'); }
+    });
+  });
+}
+
+// ── Settings Page ─────────────────────────────────────────────────────────────
+async function loadSettings() {
+  const [settings, wallets, learning] = await Promise.all([
+    api('/settings'), api('/wallets'), api('/learning')
+  ]);
+
+  document.getElementById('page-settings-page').innerHTML = `
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-white">Settings</h1>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div class="card">
+        <h2 class="text-lg font-semibold text-white mb-3">Runtime Config</h2>
+        <div class="grid grid-cols-2 gap-2 text-sm">
+          ${settings.map(s => `<div class="flex items-center justify-between"><span class="text-gray-400">${s.key}:</span> <span class="editable-setting text-white font-mono text-xs cursor-pointer hover:text-indigo-300" data-key="${s.key}">${s.value}</span></div>`).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <h2 class="text-lg font-semibold text-white mb-3">Saved Wallets</h2>
+        ${wallets.length === 0 ? '<div class="text-gray-500 text-sm">No wallets saved</div>' : `
+        <div class="space-y-2">
+          ${wallets.map(w => `<div class="flex items-center justify-between p-2 rounded-lg bg-white/[0.03]">
+            <span class="text-sm font-medium text-white">${w.label}</span>
+            <span class="text-xs font-mono text-gray-400">${shortAddr(w.address)}</span>
+          </div>`).join('')}
+        </div>`}
+      </div>
+    </div>
+    <div class="card">
+      <h2 class="text-lg font-semibold text-white mb-3">Learning Lessons</h2>
+      ${learning.lessons.length === 0 ? '<div class="text-gray-500 text-sm">No active lessons</div>' : `
+      <div class="space-y-2">
+        ${learning.lessons.map(l => `<div class="p-3 rounded-lg bg-white/[0.03] border-l-2 border-purple-500/50">
+          <div class="text-sm text-gray-300">${l.lesson || '(empty)'}</div>
+          <div class="text-xs text-gray-500 mt-1">${timeAgo(l.created_at_ms)}</div>
+        </div>`).join('')}
+      </div>`}
+    </div>
+  `;
+
+  document.querySelectorAll('#page-settings-page .editable-setting').forEach(el => {
+    el.addEventListener('dblclick', () => {
+      const key = el.dataset.key;
+      const current = el.textContent;
+      const val = prompt(`Edit setting "${key}" (current: ${current}):`, current);
+      if (val === null || val === '') return;
+      charonApi('PATCH', '/settings', { key, value: val })
+        .then(() => { notify(`"${key}" updated`); loadSettings(); })
+        .catch(err => notify(err.message, 'error'));
+    });
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+startAutoRefresh();
+loadPage('overview');
 </script>
 </body>
 </html>
