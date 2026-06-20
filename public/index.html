@@ -321,7 +321,7 @@ async function loadOverview() {
           <h2 class="text-sm font-semibold text-white uppercase tracking-wider">Performance Trend</h2>
           <span class="text-xs text-gray-500">Realized PnL (SOL)</span>
         </div>
-        <canvas id="pnlChart" height="200"></canvas>
+        <div style="height:200px;position:relative"><canvas id="pnlChart"></canvas></div>
       </div>
       <div class="space-y-4">
         <div class="card">
@@ -460,6 +460,8 @@ function renderPnlChart(data) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      animation: false,
+      resizeDelay: 0,
       plugins: { legend: { display: false } },
       scales: {
         x: {
@@ -467,6 +469,7 @@ function renderPnlChart(data) {
           grid: { color: 'rgba(255,255,255,0.03)' }
         },
         y: {
+          beginAtZero: true,
           ticks: { color: '#6b7280', font: { size: 10 }, callback: v => v.toFixed(3) + ' SOL' },
           grid: { color: 'rgba(255,255,255,0.05)' }
         }
