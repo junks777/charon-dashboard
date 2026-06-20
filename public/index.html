@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Charon Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -44,6 +45,18 @@
     .tab-btn.active { @apply bg-indigo-500/20 text-indigo-400; }
     .tab-btn:not(.active) { @apply text-gray-400 hover:text-gray-300; }
     .skeleton { @apply animate-pulse bg-white/5 rounded; }
+    .pos-card { @apply bg-dark-800/80 border border-white/5 rounded-xl overflow-hidden backdrop-blur-sm; }
+    .pos-card-down { border-color: rgba(239,68,68,0.2); }
+    .pos-card-up { border-color: rgba(52,211,153,0.2); }
+    .flag-down { background: linear-gradient(90deg, rgba(239,68,68,0.15), transparent); }
+    .flag-up { background: linear-gradient(90deg, rgba(52,211,153,0.15), transparent); }
+    .minimap-cell { width: 12px; height: 12px; border-radius: 2px; transition: transform .15s; }
+    .minimap-cell:hover { transform: scale(1.3); }
+    .stat-tile { @apply bg-dark-800/80 border border-white/5 rounded-xl p-4 backdrop-blur-sm; }
+    .stat-tile .label { @apply text-xs text-gray-500 uppercase tracking-wider; }
+    .stat-tile .value { @apply text-xl font-bold text-white mt-0.5; }
+    .gmgn-btn { @apply text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 px-2.5 py-1 rounded transition-colors; }
+    .birdeye-btn { @apply text-xs bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 px-2.5 py-1 rounded transition-colors; }
   </style>
 </head>
 <body class="dark text-gray-100">
@@ -235,65 +248,113 @@ async function loadPage(page) {
 
 // ── Overview Page ─────────────────────────────────────────────────────────────
 async function loadOverview() {
-  const [stats, positions, recentTrades] = await Promise.all([
-    api('/stats'), api('/positions'), api('/trades')
+  const [stats, positions, closedPositions, strategies, settings] = await Promise.all([
+    api('/stats'), api('/positions'), api('/trades'), api('/strategies'), api('/settings')
   ]);
 
-  document.getElementById('page-overview').innerHTML = `
+  // Compute unrealized PnL from open positions
+  let unrealizedSol = 0;
+  positions.forEach(p => {
+    const entryMcap = Number(p.entry_mcap);
+    const currentMcap = Number(p.currentMcap);
+    if (entryMcap > 0 && currentMcap > 0) {
+      const pct = (currentMcap / entryMcap - 1);
+      unrealizedSol += Number(p.size_sol) * pct;
+    }
+  });
+
+  // TP/SL ratio from closed positions
+  const tpCount = closedPositions.filter(p => (p.exit_reason || '').startsWith('TP')).length;
+  const slCount = closedPositions.filter(p => (p.exit_reason || '').startsWith('SL')).length;
+
+  // Win/loss breakdown
+  const winCount = Number(stats.pnl.wins) || 0;
+  const lossCount = Number(stats.pnl.losses) || 0;
+  const totalClosed = winCount + lossCount;
+  const winRate = totalClosed > 0 ? (winCount / totalClosed * 100).toFixed(1) : '0.0';
+
+  // Build chart data from closed positions (cumulative PnL over time)
+  const chartData = buildPnlChartData(closedPositions);
+
+  const html = `
     <div class="mb-6">
       <h1 class="text-2xl font-bold text-white">Overview</h1>
-      <p class="text-sm text-gray-400 mt-1">Real-time Charon bot status and performance</p>
+      <p class="text-sm text-gray-400 mt-1">Trading Bot Performance</p>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div class="card">
-        <div class="stat-label">Agent Status</div>
-        <div class="stat-value flex items-center gap-2 mt-1">
-          <span class="inline-block w-3 h-3 rounded-full ${stats.settings.agentEnabled === 'true' ? 'bg-emerald-400' : 'bg-gray-500'}"></span>
-          ${stats.settings.agentEnabled === 'true' ? 'Active' : 'Disabled'}
+
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <div class="stat-tile">
+        <div class="label">OPEN</div>
+        <div class="value">${stats.openPositions}</div>
+        <div class="text-xs text-gray-500 mt-0.5">Live: ${stats.livePositions}</div>
+      </div>
+      <div class="stat-tile">
+        <div class="label">WINRATE</div>
+        <div class="value">${winRate}%</div>
+        <div class="text-xs text-gray-500 mt-0.5"><span class="text-emerald-400">${winCount}W</span> / <span class="text-red-400">${lossCount}L</span></div>
+      </div>
+      <div class="stat-tile">
+        <div class="label">UNREALIZED</div>
+        <div class="value ${pnlClass(unrealizedSol)}">${fmtSol(unrealizedSol)}</div>
+        <div class="text-xs text-gray-500 mt-0.5">Open positions</div>
+      </div>
+      <div class="stat-tile">
+        <div class="label">NET SOL</div>
+        <div class="value ${pnlClass(stats.pnl.totalSol)}">${fmtSol(stats.pnl.totalSol)}</div>
+        <div class="text-xs text-gray-500 mt-0.5">Realized PnL</div>
+      </div>
+      <div class="stat-tile">
+        <div class="label">AVG PNL</div>
+        <div class="value ${pnlClass(stats.pnl.avgPct)}">${fmtPct(stats.pnl.avgPct)}</div>
+        <div class="text-xs text-gray-500 mt-0.5">Per closed trade</div>
+      </div>
+      <div class="stat-tile">
+        <div class="label">TP/SL</div>
+        <div class="value">${tpCount}<span class="text-xs text-gray-500">/</span>${slCount}</div>
+        <div class="text-xs text-gray-500 mt-0.5">${totalClosed} closed</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+      <div class="lg:col-span-2 card">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold text-white uppercase tracking-wider">Performance Trend</h2>
+          <span class="text-xs text-gray-500">Realized PnL (SOL)</span>
         </div>
-        <div class="text-sm text-gray-400 mt-1">Mode: <span class="text-indigo-400 font-medium">${stats.settings.tradingMode}</span></div>
+        <canvas id="pnlChart" height="200"></canvas>
       </div>
-      <div class="card">
-        <div class="stat-label">Active Strategy</div>
-        <div class="stat-value text-lg mt-1">${stats.activeStrategy ? stats.activeStrategy.name : 'None'}</div>
-        <div class="text-sm text-gray-400 mt-1">Size: ${fmtSol(stats.activeStrategy?.position_size_sol)} &middot; TP: ${fmtPct(stats.activeStrategy?.tp_percent)} &middot; SL: ${fmtPct(stats.activeStrategy?.sl_percent)}</div>
-      </div>
-      <div class="card">
-        <div class="stat-label">Open Positions</div>
-        <div class="stat-value mt-1">${stats.openPositions}</div>
-        <div class="text-sm text-gray-400 mt-1">Live: ${stats.livePositions} &middot; Closed: ${stats.closedPositions}</div>
-      </div>
-      <div class="card">
-        <div class="stat-label">PnL (Closed)</div>
-        <div class="stat-value ${pnlClass(stats.pnl.totalSol)} mt-1">${Number(stats.pnl.totalSol).toFixed(4)} SOL</div>
-        <div class="text-sm text-gray-400 mt-1">Avg: ${fmtPct(stats.pnl.avgPct)} &middot; ${stats.pnl.wins}W / ${stats.pnl.losses}L</div>
-      </div>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-      <div class="card">
-        <div class="stat-label">Candidates</div>
-        <div class="stat-value text-lg mt-1">${stats.totalCandidates}</div>
-        <div class="text-sm text-gray-400">LLM Decisions: ${stats.totalDecisions}</div>
-      </div>
-      <div class="card">
-        <div class="stat-label">Signal Events</div>
-        <div class="stat-value text-lg mt-1">${stats.signalEvents}</div>
-        <div class="text-sm text-gray-400">LLM Batches: ${stats.totalBatches}</div>
-      </div>
-      <div class="card">
-        <div class="stat-label">Pending Intents</div>
-        <div class="stat-value text-lg mt-1">${stats.pendingIntents}</div>
-        <div class="text-sm text-gray-400">Awaiting confirmation</div>
-      </div>
-      <div class="card">
-        <div class="stat-label">Win Rate</div>
-        <div class="stat-value text-lg mt-1">${stats.pnl.totalTrades > 0 ? ((stats.pnl.wins / stats.pnl.totalTrades) * 100).toFixed(1) + '%' : '0%'}</div>
-        <div class="text-sm text-gray-400">${stats.pnl.totalTrades} total trades</div>
+      <div class="space-y-4">
+        <div class="card">
+          <h2 class="text-sm font-semibold text-white uppercase tracking-wider mb-3">Active Strategy</h2>
+          ${stats.activeStrategy ? `
+          <div class="space-y-1.5 text-sm">
+            <div class="flex justify-between"><span class="text-gray-400">Name</span><span class="text-white font-medium">${stats.activeStrategy.name}</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Mode</span><span class="text-indigo-400">${stats.activeStrategy.entry_mode || 'immediate'}</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Max Pos</span><span class="text-white">${stats.activeStrategy.max_open_positions}</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Size</span><span class="text-white">${fmtSol(stats.activeStrategy.position_size_sol)}</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">TP / SL</span><span><span class="text-emerald-400">${fmtPct(stats.activeStrategy.tp_percent)}</span> / <span class="text-red-400">${fmtPct(stats.activeStrategy.sl_percent)}</span></span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Trailing</span><span class="text-white">${stats.activeStrategy.trailing_enabled ? fmtPct(stats.activeStrategy.trailing_percent) : 'off'}</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Mcap Range</span><span class="text-white">${fmtUsd(stats.activeStrategy.min_mcap_usd)} - ${stats.activeStrategy.max_mcap_usd > 0 ? fmtUsd(stats.activeStrategy.max_mcap_usd) : '∞'}</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">GMGN Fee</span><span class="text-white">${fmtSol(stats.activeStrategy.min_fee_claim_sol)} min</span></div>
+          </div>` : '<div class="text-gray-500 text-sm">No active strategy</div>'}
+        </div>
+        <div class="card">
+          <h2 class="text-sm font-semibold text-white uppercase tracking-wider mb-3">Runtime Config</h2>
+          <div class="space-y-1.5 text-sm">
+            <div class="flex justify-between"><span class="text-gray-400">Trading Mode</span><span class="text-indigo-400">${stats.settings.tradingMode}</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Signal Poll</span><span class="text-white">${stats.activeStrategy ? ((settings.find(s => s.key === 'GRADUATED_POLL_MS')?.value || '30') + 's') : '?'}</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">LLM Candidates</span><span class="text-white">${stats.totalCandidates}</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">LLM Min Conf</span><span class="text-white">${stats.activeStrategy?.llm_min_confidence || '?'}%</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">GMGN Delay</span><span class="text-white">${stats.activeStrategy ? ((settings.find(s => s.key === 'GMGN_CACHE_TTL_MS')?.value || '5') + 's') : '?'}</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Active Lessons</span><span class="text-white">${stats.totalDecisions}</span></div>
+          </div>
+        </div>
       </div>
     </div>
+
     <div class="card mb-6">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-white">Top Open Positions</h2>
+        <h2 class="text-lg font-semibold text-white">Open Positions</h2>
         <span class="text-xs text-gray-500">${positions.length} positions</span>
       </div>
       ${positions.length === 0 ? '<div class="text-gray-500 text-sm py-8 text-center">No open positions</div>' : `
@@ -303,27 +364,116 @@ async function loadOverview() {
             <tr class="border-b border-white/5">
               <th class="table-header">Token</th>
               <th class="table-header">Entry Mcap</th>
+              <th class="table-header">MC Now</th>
               <th class="table-header">Size</th>
               <th class="table-header">TP / SL</th>
               <th class="table-header">Age</th>
               <th class="table-header">Mode</th>
+              <th class="table-header">PnL</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-white/5">
-            ${positions.slice(0, 5).map(p => `
-            <tr class="hover:bg-white/[0.02]">
+            ${positions.slice(0, 5).map(p => {
+              const entryMcap = Number(p.entry_mcap);
+              const currentMcap = Number(p.currentMcap);
+              const pnlPct = entryMcap > 0 && currentMcap > 0 ? ((currentMcap / entryMcap - 1) * 100) : 0;
+              return `<tr class="hover:bg-white/[0.02]">
               <td class="table-cell font-medium text-white">${p.symbol || shortAddr(p.mint)}</td>
               <td class="table-cell">${fmtUsd(p.entry_mcap)}</td>
+              <td class="table-cell">${currentMcap > 0 ? fmtUsd(currentMcap) : '?'}</td>
               <td class="table-cell">${fmtSol(p.size_sol)}</td>
               <td class="table-cell">${fmtPct(p.tp_percent)} / ${fmtPct(p.sl_percent)}</td>
               <td class="table-cell text-gray-400">${timeAgo(p.opened_at_ms)}</td>
               <td class="table-cell">${statusBadge(p.execution_mode || 'dry_run')}</td>
-            </tr>`).join('')}
+              <td class="table-cell font-medium ${pnlClass(pnlPct)}">${fmtPct(pnlPct)}</td>
+            </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>`}
     </div>
   `;
+
+  document.getElementById('page-overview').innerHTML = html;
+
+  // Render chart after DOM is ready
+  if (chartData.labels.length > 1) {
+    renderPnlChart(chartData);
+  } else {
+    document.getElementById('pnlChart')?.parentElement?.insertAdjacentHTML('beforeend', '<div class="text-gray-500 text-sm text-center py-8">Not enough trade data for chart</div>');
+    document.getElementById('pnlChart')?.remove();
+  }
+}
+
+function buildPnlChartData(closed) {
+  const sorted = [...closed].filter(p => p.closed_at_ms).sort((a, b) => a.closed_at_ms - b.closed_at_ms);
+  const labels = [];
+  const values = [];
+  let cum = 0;
+  // Group by hour for cleaner display
+  const hourly = {};
+  sorted.forEach(p => {
+    const h = new Date(Number(p.closed_at_ms));
+    h.setMinutes(0, 0, 0);
+    const key = h.toISOString().slice(0, 13);
+    hourly[key] = (hourly[key] || 0) + Number(p.pnl_sol || 0);
+  });
+  Object.entries(hourly).forEach(([hour, sol]) => {
+    cum += sol;
+    labels.push(new Date(hour + ':00').toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit' }));
+    values.push(Number(cum.toFixed(4)));
+  });
+  return { labels, values };
+}
+
+let pnlChartInstance = null;
+
+function renderPnlChart(data) {
+  if (pnlChartInstance) pnlChartInstance.destroy();
+  const ctx = document.getElementById('pnlChart')?.getContext('2d');
+  if (!ctx) return;
+  const isPositive = data.values[data.values.length - 1] >= 0;
+  const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+  if (isPositive) {
+    gradient.addColorStop(0, 'rgba(52,211,153,0.2)');
+    gradient.addColorStop(1, 'rgba(52,211,153,0)');
+  } else {
+    gradient.addColorStop(0, 'rgba(239,68,68,0.2)');
+    gradient.addColorStop(1, 'rgba(239,68,68,0)');
+  }
+  pnlChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.labels,
+      datasets: [{
+        label: 'Cumulative PnL',
+        data: data.values,
+        borderColor: isPositive ? '#34d399' : '#ef4444',
+        backgroundColor: gradient,
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        pointHitRadius: 10,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          ticks: { color: '#6b7280', maxTicksLimit: 8, font: { size: 10 } },
+          grid: { color: 'rgba(255,255,255,0.03)' }
+        },
+        y: {
+          ticks: { color: '#6b7280', font: { size: 10 }, callback: v => v.toFixed(3) + ' SOL' },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      },
+      interaction: { intersect: false, mode: 'index' }
+    }
+  });
 }
 
 // ── Positions Page ────────────────────────────────────────────────────────────
@@ -343,39 +493,80 @@ async function loadPositions() {
       <button class="tab-btn" data-tab="pos-closed">Closed (${closed.length})</button>
       <button class="tab-btn" data-tab="pos-trades">Trades (${trades.length})</button>
     </div>
+
+    <!-- Open positions: card grid + minimap -->
     <div id="pos-open" class="tab-content">
       ${open.length === 0 ? '<div class="card text-gray-500 text-sm py-8 text-center">No open positions</div>' : `
-      <div class="card p-0 overflow-x-auto">
-        <table class="w-full">
-          <thead><tr class="border-b border-white/5">
-            <th class="table-header">ID</th><th class="table-header">Token</th><th class="table-header">Entry Mcap</th><th class="table-header">Size</th>
-            <th class="table-header">TP</th><th class="table-header">SL</th><th class="table-header">Trail</th><th class="table-header">Opened</th><th class="table-header">Mode</th><th class="table-header">Actions</th>
-          </tr></thead>
-          <tbody class="divide-y divide-white/5">
-            ${open.map(p => `<tr class="hover:bg-white/[0.02]">
-              <td class="table-cell text-gray-400">#${p.id}</td>
-              <td class="table-cell"><span class="font-medium text-white">${p.symbol || '?'}</span><br><span class="text-xs text-gray-500">${shortAddr(p.mint)}</span></td>
-              <td class="table-cell">${fmtUsd(p.entry_mcap)}</td>
-              <td class="table-cell">${fmtSol(p.size_sol)}</td>
-              <td class="table-cell text-emerald-400">
-                <span class="editable-tp" data-id="${p.id}" data-field="tp_percent">${fmtPct(p.tp_percent)}</span>
-              </td>
-              <td class="table-cell text-red-400">
-                <span class="editable-sl" data-id="${p.id}" data-field="sl_percent">${fmtPct(p.sl_percent)}</span>
-              </td>
-              <td class="table-cell">
-                <button class="trail-btn text-xs underline hover:text-indigo-300" data-id="${p.id}">${p.trailing_enabled ? fmtPct(p.trailing_percent) : 'off'}</button>
-              </td>
-              <td class="table-cell text-gray-400">${timeAgo(p.opened_at_ms)}</td>
-              <td class="table-cell">${statusBadge(p.execution_mode || 'dry_run')}</td>
-              <td class="table-cell">
-                <button class="close-btn text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 px-2 py-1 rounded" data-id="${p.id}">Close</button>
-              </td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
+      <div class="flex gap-4">
+        <div class="flex-1">
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            ${open.map(p => {
+              const entryMcap = Number(p.entry_mcap);
+              const currentMcap = Number(p.currentMcap);
+              const pnlPct = entryMcap > 0 && currentMcap > 0 ? ((currentMcap / entryMcap - 1) * 100) : 0;
+              const isUp = pnlPct >= 0;
+              const peakPct = p.peak_mcap && entryMcap > 0 ? ((Number(p.peak_mcap) / entryMcap - 1) * 100).toFixed(0) : '?';
+              return `<div class="pos-card ${isUp ? 'pos-card-up' : 'pos-card-down'}">
+                <div class="h-1 ${isUp ? 'flag-up' : 'flag-down'}"></div>
+                <div class="p-3">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm font-bold text-white">${p.symbol || shortAddr(p.mint)}</span>
+                      <span class="text-[10px] text-gray-500">#${p.id}</span>
+                    </div>
+                    ${statusBadge(p.execution_mode || 'dry_run')}
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px" class="text-xs mb-3">
+                    <span class="text-gray-500">PNL%</span>
+                    <span class="font-semibold text-right ${pnlClass(pnlPct)}">${pnlPct.toFixed(1)}%</span>
+                    <span class="text-gray-500">PNL SOL</span>
+                    <span class="font-semibold text-right ${pnlClass(pnlPct)}">${fmtSol((currentMcap / entryMcap - 1) * Number(p.size_sol))}</span>
+                    <span class="text-gray-500">MC IN</span>
+                    <span class="text-right text-white/80">${fmtUsd(p.entry_mcap)}</span>
+                    <span class="text-gray-500">MC OUT</span>
+                    <span class="text-right text-white/80">${currentMcap > 0 ? fmtUsd(currentMcap) : '?'}</span>
+                    <span class="text-gray-500">TP</span>
+                    <span class="text-right"><span class="editable-tp text-emerald-400 cursor-pointer" data-id="${p.id}" data-field="tp_percent">${fmtPct(p.tp_percent)}</span></span>
+                    <span class="text-gray-500">SL</span>
+                    <span class="text-right"><span class="editable-sl text-red-400 cursor-pointer" data-id="${p.id}" data-field="sl_percent">${fmtPct(p.sl_percent)}</span></span>
+                    <span class="text-gray-500">TRAIL</span>
+                    <span class="text-right"><button class="trail-btn text-purple-400 underline cursor-pointer" data-id="${p.id}">${p.trailing_enabled ? fmtPct(p.trailing_percent) : 'off'}</button></span>
+                    <span class="text-gray-500">PEAK</span>
+                    <span class="text-right text-white/80">${peakPct !== '?' ? peakPct + '%' : '?'}</span>
+                  </div>
+                  <div class="flex items-center gap-2 pt-2 border-t border-white/5">
+                    <a href="https://gmgn.ai/sol/token/${p.mint}" target="_blank" class="gmgn-btn no-underline">GMGN</a>
+                    <a href="https://birdeye.so/token/${p.mint}?chain=solana" target="_blank" class="birdeye-btn no-underline">BIRDEYE</a>
+                    <button class="close-btn text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 px-2.5 py-1 rounded transition-colors ml-auto" data-id="${p.id}">CLOSE</button>
+                  </div>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+        <!-- Minimap sidebar -->
+        <div class="hidden lg:block w-[100px] shrink-0">
+          <div class="text-xs text-gray-500 uppercase tracking-wider mb-2 font-semibold">Minimap</div>
+          <div class="flex flex-wrap gap-1.5">
+            ${(() => {
+              const minSol = Math.min(...open.map(p => Number(p.size_sol) || 0));
+              const maxSol = Math.max(...open.map(p => Number(p.size_sol) || 0));
+              const range = maxSol - minSol || 1;
+              return open.map(p => {
+                const entryMcap = Number(p.entry_mcap);
+                const currentMcap = Number(p.currentMcap);
+                const pct = entryMcap > 0 && currentMcap > 0 ? ((currentMcap / entryMcap - 1) * 100) : 0;
+                const size = Number(p.size_sol) || 0;
+                const normSize = 0.3 + ((size - minSol) / range) * 0.7;
+                return `<div class="minimap-cell ${pct >= 0 ? 'bg-emerald-400' : 'bg-red-400'}" style="opacity:${normSize}" title="${p.symbol || shortAddr(p.mint)}: ${pct.toFixed(1)}%"></div>`;
+              }).join('');
+            })()}
+          </div>
+        </div>
       </div>`}
     </div>
+
+    <!-- Closed positions: table -->
     <div id="pos-closed" class="tab-content hidden">
       ${closed.length === 0 ? '<div class="card text-gray-500 text-sm py-8 text-center">No closed positions</div>' : `
       <div class="card p-0 overflow-x-auto">
@@ -400,6 +591,8 @@ async function loadPositions() {
         </table>
       </div>`}
     </div>
+
+    <!-- Trades table -->
     <div id="pos-trades" class="tab-content hidden">
       <div class="card p-0 overflow-x-auto">
         <table class="w-full">
